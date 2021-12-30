@@ -34,9 +34,39 @@ class MyWidget(QtWidgets.QMainWindow):
         self.start_button.clicked.connect(lambda: self.start_errormap())
         self.pens = [pg.mkPen('r'), pg.mkPen('b'), pg.mkPen('g')]
 
+    def Open(self):
+        self.file = QtWidgets.QFileDialog.getOpenFileNames(
+           self, 'Open only txt or CSV or xls', os.getenv('HOME'))
+        data = pd.read_csv(self.file[0][0])
+        self.y_data = data.values[:, 1]
+        # self.time = np.arange(0, 9.99, step=0.01, dtype=float)
+        self.x_data = data.values[:, 0]
+        self.maingraph.plot(self.x_data, self.y_data, pen=self.pens[2])
+        self.Order_text.setText("0")
+        self.NumChunks_text.setText("1")
+        self.extrapolation_text.setText("100")
+        self.fitting()
+        self.ch_equation()
 
+    def Order(self):
+        if self.extrapolation_text.text() != "0":
+            self.NumChunks_text.setText("1")
+            self.extrapolation()
+        else:
+            self.fitting()
 
-def extrapolation(self):
+    def get_values(self):
+        order = int(self.Order_text.text())
+        num_chunks = int(self.NumChunks_text.text())
+        return order, num_chunks
+
+    x_each_chunk = []
+    chunk_index = []
+    chunks_points = []
+    y_each_chunk = []
+    equ_arr = []
+
+    def extrapolation(self):
         self.equ_arr.clear()
         self.NumChunks_text.setText("1")
         self.extra = int(self.extrapolation_text.text())
