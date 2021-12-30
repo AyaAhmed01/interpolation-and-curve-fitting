@@ -98,6 +98,70 @@ class MyWidget(QtWidgets.QMainWindow):
         print(self.equ_arr)
         self.ch_equation()
 
+    def fitting(self):
+        order, num_chunks = self.get_values()
+        chunk_width = (max(self.x_data) - min(self.x_data)) / num_chunks
+        self.chunk_index.clear()
+        self.equ_arr.clear()
+        for i in range(0, num_chunks + 1):
+            ind = min(self.x_data) + (i * chunk_width)
+            self.chunk_index.append(ind)
+
+        self.maingraph.clear()
+        self.maingraph.plot(self.x_data, self.y_data, pen=self.pens[2])
+        self.new_chunk = 0
+        for j in range(1, len(self.chunk_index) + 1):
+            self.x_each_chunk.clear()
+            self.y_each_chunk.clear()
+            for k in range(self.new_chunk, len(self.x_data)):
+                if self.x_data[k] <= self.chunk_index[j]:
+                    self.x_each_chunk.append(self.x_data[k])
+                    self.y_each_chunk.append(self.y_data[k])
+                else:
+                    break
+            self.new_chunk = k
+            self.interpolation(self.x_each_chunk, self.y_each_chunk, order)
+
+    # percent_error = []
+    def interpolation(self, x, y, order):
+        coeffs = poly.polyfit(x, y, order)
+        x_fitline = np.linspace(x[0], x[-1], num=len(x) * 10)
+        y_fitline = poly.polyval(x_fitline, coeffs)
+        self.error_per_chunk = 0
+        self.maingraph.plot(x_fitline, y_fitline, pen=None, symbol='o')
+        for i in range(0, len(y)):
+            self.error_per_chunk += ((y[i] - y_fitline[i])**2)
+        # self.per_error = self.percent_error)
+        fx = str(round(coeffs[0], 4))
+        for i in range(1, len(coeffs)):
+            if coeffs[i] > 0:
+                const = " + " + str(round(coeffs[i], 4)) + " x^{{{}}}".format(i)
+            else:
+                const = " - " + str(abs(round(coeffs[i], 4))) + " x^{{{}}}".format(i)
+            fx += const
+        error = "\n, Percentage Error = " + str(round(self.error_per_chunk, 3)) + " %"
+        fx += error
+        self.equ_arr.append(fx)
+        print(self.equ_arr)
+        self.ch_equation()
+        return coeffs
+
+    def ch_equation(self):
+        order, num_chunks = self.get_values()
+        self.select_chunk_Box.setMinimum(1)
+        self.select_chunk_Box.setMaximum(num_chunks)
+        box_value = self.select_chunk_Box.value()
+        eqn = self.equ_arr[box_value-1]
+        self.fig.clear()
+        self.fig.suptitle("$f(x) = {{{}}}$".format(str(eqn)),
+                          x=0.0, y=0.5,
+                          horizontalalignment='left',
+                          verticalalignment='center')
+        self.canvas_equation.draw()
+
+    extrapolated_x = []
+
+
 def main():
     app = QtWidgets.QApplication(sys.argv)
     application = MyWidget()
