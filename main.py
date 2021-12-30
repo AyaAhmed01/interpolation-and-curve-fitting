@@ -161,6 +161,212 @@ class MyWidget(QtWidgets.QMainWindow):
 
     extrapolated_x = []
 
+    def start_errormap(self):
+        self.complete = 0
+        self.error.clear()
+        self.start_button.setText("cancel")
+        self.x_param = self.x_error_map.currentText()
+        self.y_param = self.y_error_map.currentText()
+
+        x_range = int(self.x_max.text())
+        y_range = int(self.y_max.text())
+        self.step = (100 / (x_range*y_range))
+        
+        if self.x_param == 'order':                  # x_param, y_param are taken from user
+            if self.y_param == 'number of chunks':    # chunk on y 
+                self.overlap_vals = int(self.const_text.text()) / 100.0
+                self.chunk_vals = np.arange(2, y_range+1)
+                self.order_vals = np.arange(0, x_range+1)
+                self.create_errormap(self.order_vals, self.chunk_vals)
+            else:    # y is overlapping 
+                self.chunk_vals = int(self.const_text.text())
+                self.overlap_vals = np.arange(0, y_range+1, 2) / 100.0
+                self.order_vals = np.arange(0, x_range+1)
+                self.create_errormap(self.order_vals, self.overlap_vals)
+            
+
+        if self.x_param == 'number of chunks':
+            if self.y_param == 'order':    # order on y 
+                self.overlap_vals = int(self.const_text.text()) / 100.0
+                self.chunk_vals = np.arange(2, x_range+1)
+                self.order_vals = np.arange(0, y_range+1)
+                self.create_errormap(self.chunk_vals, self.order_vals)
+            else:    # y is  overlapping
+                self.order_vals = int(self.const_text.text())
+                self.overlap_vals = np.arange(0, y_range+1, 2) / 100.0
+                self.chunk_vals = np.arange(2, x_range+1)
+                self.create_errormap(self.chunk_vals, self.overlap_vals)
+        
+        if self.x_param == 'overlapping':
+            if self.y_param == 'order':    # order on y 
+                self.chunk_vals = int(self.const_text.text())
+                self.overlap_vals = np.arange(0, x_range+1, 2) / 100.0
+                self.order_vals = np.arange(0, y_range+1)
+                self.create_errormap(self.overlap_vals, self.order_vals)
+            else:    # y is  chunks
+                self.order_vals = int(self.const_text.text()) 
+                self.chunk_vals = np.arange(2, y_range+1)
+                self.overlap_vals = np.arange(0, x_range+1, 2) / 100.0
+                self.create_errormap(self.overlap_vals, self.chunk_vals)
+    
+    
+    def create_errormap(self, x_axis, y_axis):
+        self.mat_xaxis = x_axis
+        self.mat_yaxis = y_axis
+        print(self.mat_xaxis)
+        print(self.mat_yaxis)
+
+        self.error_array = []
+        self.calculate_errormap()  # fills the error_array
+        # print("error array", self.error_array)
+        self.error_array = np.array(self.error_array) # convert to np array to do reshape
+        self.error_mat = self.error_array.reshape(len(self.mat_xaxis), len(self.mat_yaxis))
+        # print("error matrix", self.error_mat)
+        # just for test
+        self.error_matrix = np.flip(self.error_mat, 0)
+        self.error.clear()
+        ax = self.error.add_subplot(111)
+        map = ax.imshow(self.error_matrix, cmap='inferno', extent=[min(self.mat_xaxis), max(self.mat_xaxis), min(self.mat_yaxis), max(self.mat_yaxis)],  aspect='auto')    # self.mat_xaxis, self.mat_yaxis,
+        divider3 = make_axes_locatable(ax)
+        cax3 = divider3.append_axes("right", size="10%")
+        cbar3 = plt.colorbar(map, cax=cax3)
+        self.canvas_error_map.draw()
+        self.progressBar.setValue(100)
+        self.start_button.setText("start")
+
+    def calculate_errormap(self):
+        for x_val in self.mat_xaxis:
+            for y_val in self.mat_yaxis:
+                if isinstance(self.overlap_vals, float):      # when overlap is const
+                    error_val = self.fill_error_mat_zero_overlap(x_val, y_val)
+                else:
+                    print("x value = ", x_val)
+                    print("y value = ", y_val)
+
+                    error_val = self.fill_error_mat_nonzero_overlap(x_val, y_val)
+                    print()    # overlap is array
+                self.error_array.append(error_val)
+                self.complete += self.step
+                self.progressBar.setValue(self.complete)
+
+    x_chunks_arr = []
+    y_chunks_arr = []
+    
+    
+    def fill_error_mat_zero_overlap(self, x_val, y_val):
+        if self.x_param == "number of chunks":
+            num_chunk = x_val
+            order = y_val
+        if self.y_param == "number of chunks":
+            num_chunk = y_val
+            order = x_val
+            
+
+        total_error = []
+        chunk_width = ((max(self.x_data) - min(self.x_data)) / num_chunk) + (self.overlap_vals / 2)
+        self.chunk_index.clear()
+        self.chunk_index.append(min(self.x_data))
+        for i in range(0, (2 * num_chunk)):
+            if (i % 2) == 0:
+                ind = self.chunk_index[i] + chunk_width
+            else:
+                ind = self.chunk_index[i] - self.overlap_vals
+            self.chunk_index.append(ind)
+        self.chunk_index.pop()
+        self.new_chunk = 0
+        for j in range(0, len(self.chunk_index)-1):
+            self.x_each_chunk.clear()
+            self.y_each_chunk.clear()
+            if (j % 2) == 0:
+                for k in range(self.new_chunk, len(self.x_data)):
+                    if self.x_data[k] >= self.chunk_index[j] and self.x_data[k] <= self.chunk_index[j+1]:
+                        self.x_each_chunk.append(self.x_data[k])
+                        self.y_each_chunk.append(self.y_data[k])
+                        if (j+2) != len(self.chunk_index):
+                            if self.x_data[k] <= self.chunk_index[j+2]:
+                                self.new_chunk = k+1
+                    else:
+                        break
+                self.x_chunks_arr.append(self.x_each_chunk)
+                self.y_chunks_arr.append(self.y_each_chunk)
+
+        for i in range(0, len(self.x_chunks_arr)):
+            coeffs = poly.polyfit(self.x_chunks_arr[i], self.y_chunks_arr[i], order)
+            x_fitline = np.linspace(self.x_chunks_arr[0], self.x_chunks_arr[-1], num=len(self.x_chunks_arr) * 1)
+            y_fitline = poly.polyval(x_fitline, coeffs)
+
+        k = 0
+        for i in range(len(self.y_chunks_arr)):
+            for j in range(len(self.y_chunks_arr[i])):
+                total_error.append(((self.y_chunks_arr[i][j] * y_fitline[k]) / self.y_chunks_arr[i][j]) * 100)
+                ++k
+        return np.median(total_error)
+    
+    def fill_error_mat_nonzero_overlap(self, x_val, y_val):
+        if self.x_param == "overlapping":  # then y is chunk or order
+            overlap_val = x_val
+            if isinstance(self.order_vals, int):  # then order is const
+                order = self.order_vals
+                num_chunk = y_val
+            else:  # then chunks is const
+                num_chunk = self.chunk_vals
+                order = y_val
+        else:  # then x is chunk or order
+            overlap_val = y_val
+            if isinstance(self.order_vals, int):  # then order is const
+                order = self.order_vals
+                num_chunk = x_val
+            else:  # then chunks is const
+                num_chunk = self.chunk_vals
+                order = x_val
+
+        total_error = []
+        chunk_width = ((max(self.x_data) - min(self.x_data)) / num_chunk) + (overlap_val / 2)
+        self.chunk_index.clear()
+        self.chunk_index.append(min(self.x_data))
+        print(num_chunk)
+        for i in range(0, (2 * num_chunk)):
+            if (i % 2) == 0:
+                ind = self.chunk_index[i] + chunk_width
+            else:
+                ind = self.chunk_index[i] - overlap_val
+            self.chunk_index.append(ind)
+        self.chunk_index.pop()
+        self.new_chunk = 0
+        for j in range(0, len(self.chunk_index)-1):
+            self.x_each_chunk.clear()
+            self.y_each_chunk.clear()
+            if (j % 2) == 0:
+                for k in range(self.new_chunk, len(self.x_data)):
+                    if self.x_data[k] >= self.chunk_index[j] and self.x_data[k] <= self.chunk_index[j+1]:
+                        self.x_each_chunk.append(self.x_data[k])
+                        self.y_each_chunk.append(self.y_data[k])
+                        if (j+2) != len(self.chunk_index):
+                            if self.x_data[k] <= self.chunk_index[j+2]:
+                                self.new_chunk = k+1
+                    else:
+                        break
+                self.x_chunks_arr.append(self.x_each_chunk)
+                self.y_chunks_arr.append(self.y_each_chunk)
+
+        for i in range(0, len(self.x_chunks_arr)):
+            # print(order)
+            coeffs = poly.polyfit(self.x_chunks_arr[i], self.y_chunks_arr[i], order)
+            x_fitline = np.linspace(self.x_chunks_arr[0], self.x_chunks_arr[-1], num=len(self.x_chunks_arr) * 1)
+            y_fitline = poly.polyval(x_fitline, coeffs)
+
+        k = 0
+        for i in range(len(self.y_chunks_arr)):
+            for j in range(len(self.y_chunks_arr[i])):
+                total_error.append(((self.y_chunks_arr[i][j] * y_fitline[k]) / self.y_chunks_arr[i][j]) * 100)
+                ++k
+        return np.median(total_error)
+        
+       
+      
+       
+        
+
 
 def main():
     app = QtWidgets.QApplication(sys.argv)
