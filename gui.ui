@@ -409,7 +409,7 @@
            <item>
             <widget class="QPushButton" name="start_button">
              <property name="text">
-              <string notr="true">Strat</string>
+              <string notr="true">start</string>
              </property>
              <property name="checked">
               <bool>false</bool>

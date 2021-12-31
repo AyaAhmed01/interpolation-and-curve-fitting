@@ -106,7 +106,7 @@ class Ui_MainWindow(object):
         self.comboBox_2.setItemText(0, _translate("MainWindow", "order"))
         self.comboBox_2.setItemText(1, _translate("MainWindow", "chunks"))
         self.comboBox_2.setItemText(2, _translate("MainWindow", "overlab"))
-        self.start_button.setText(_translate("MainWindow", "Strat"))
+        self.start_button.setText(_translate("MainWindow", "start"))
         self.menufile.setTitle(_translate("MainWindow", "file"))
         self.actionopen.setText(_translate("MainWindow", "open"))
 from pyqtgraph import PlotWidget
