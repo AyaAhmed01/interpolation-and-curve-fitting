@@ -1,3 +1,24 @@
+# Modify:
+# start button name
+# Put white board when chosing same variable on axis
+# make cancel button
+
+import sys
+import matplotlib.pyplot as plt
+import numpy as np
+import numpy.polynomial.polynomial as poly
+from PyQt5.QtWidgets import QLineEdit, QLabel, QPushButton, QPlainTextEdit, QSlider
+from PyQt5 import QtCore, QtGui, uic, QtWidgets
+import pyqtgraph as pg
+import os
+import pandas as pd
+from matplotlib.figure import Figure
+from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
+from mpl_toolkits.axes_grid1 import make_axes_locatable
+from matplotlib.ticker import MultipleLocator
+
+
+
 import sys
 import matplotlib.pyplot as plt
 import numpy as np
@@ -33,7 +54,9 @@ class MyWidget(QtWidgets.QMainWindow):
         self.extrapolation_text.textChanged.connect(lambda: self.extrapolation())
         self.start_button.clicked.connect(lambda: self.start_errormap())
         self.pens = [pg.mkPen('r'), pg.mkPen('b'), pg.mkPen('g')]
+        
 
+        
     def Open(self):
         self.file = QtWidgets.QFileDialog.getOpenFileNames(
            self, 'Open only txt or CSV or xls', os.getenv('HOME'))
@@ -50,7 +73,7 @@ class MyWidget(QtWidgets.QMainWindow):
 
     def Order(self):
         if self.extrapolation_text.text() != "0":
-            self.NumChunks_text.setText("1")
+            # self.NumChunks_text.setText("1")
             self.extrapolation()
         else:
             self.fitting()
@@ -65,38 +88,6 @@ class MyWidget(QtWidgets.QMainWindow):
     chunks_points = []
     y_each_chunk = []
     equ_arr = []
-
-    def extrapolation(self):
-        self.equ_arr.clear()
-        self.NumChunks_text.setText("1")
-        self.extra = int(self.extrapolation_text.text())
-        order, num_chunks = self.get_values()
-        self.size = int(len(self.x_data) * self.extra / 100)   # size taken from gui, 
-        self.new_x = self.x_data[:self.size - 1]     # to make them interpolation
-        self.new_y = self.y_data[:self.size - 1]  
-        self.extrapolated_x = self.x_data[self.size:]  # x to make extrapolation for
-        coeffs = poly.polyfit(self.new_x, self.new_y, order)   # 
-        x_fitline = np.linspace(self.new_x[0], self.new_x[-1], num=len(self.new_x) * 10)
-        x_fitting = np.array(x_fitline)
-        x_arr= np.append(x_fitting, self.extrapolated_x)
-        y_fitline = poly.polyval(x_arr, coeffs)
-        self.maingraph.clear()
-        self.maingraph.plot(self.x_data, self.y_data, pen=self.pens[2])
-        self.maingraph.plot(x_arr, y_fitline, pen=None, symbol='o')
-        for i in range(0, len(self.new_y)):
-            self.error_per_chunk += ((self.new_y[i] - y_fitline[i])**2)
-        fx = str(round(coeffs[0], 4))
-        for i in range(1, len(coeffs)):
-            if coeffs[i] > 0:
-                const = " + " + str(round(coeffs[i], 4)) + " x^{{{}}}".format(i)
-            else:
-                const = " - " + str(abs(round(coeffs[i], 4))) + " x^{{{}}}".format(i)
-            fx += const
-        error = "\n, Percentage Error = " + str(round(self.error_per_chunk, 3)) + " %"
-        fx += error
-        self.equ_arr.append(fx)
-        print(self.equ_arr)
-        self.ch_equation()
 
     def fitting(self):
         order, num_chunks = self.get_values()
@@ -122,7 +113,6 @@ class MyWidget(QtWidgets.QMainWindow):
             self.new_chunk = k
             self.interpolation(self.x_each_chunk, self.y_each_chunk, order)
 
-    # percent_error = []
     def interpolation(self, x, y, order):
         coeffs = poly.polyfit(x, y, order)
         x_fitline = np.linspace(x[0], x[-1], num=len(x) * 10)
@@ -131,7 +121,6 @@ class MyWidget(QtWidgets.QMainWindow):
         self.maingraph.plot(x_fitline, y_fitline, pen=None, symbol='o')
         for i in range(0, len(y)):
             self.error_per_chunk += ((y[i] - y_fitline[i])**2)
-        # self.per_error = self.percent_error)
         fx = str(round(coeffs[0], 4))
         for i in range(1, len(coeffs)):
             if coeffs[i] > 0:
@@ -160,7 +149,40 @@ class MyWidget(QtWidgets.QMainWindow):
         self.canvas_equation.draw()
 
     extrapolated_x = []
-
+    
+    def extrapolation(self):
+        self.equ_arr.clear()
+        self.extra = int(self.extrapolation_text.text())
+        order = self.get_values()        
+        self.size = int(len(self.x_data) * self.extra / 100)   # size taken from gui, 
+        self.new_x = self.x_data[:self.size - 1]                # to make them interpolation
+        self.new_y = self.y_data[:self.size - 1]  
+        self.extrapolated_x = self.x_data[self.size:]           # x to make extrapolation for
+        coeffs = poly.polyfit(self.new_x, self.new_y, order)   # array of coeff. of interpolation as (a + bx + cx^2 + dx^3 +.....) 
+        x_fitline = np.linspace(self.new_x[0], self.new_x[-1], num=len(self.new_x) * 10)
+        x_fitting = np.array(x_fitline)
+        x_arr= np.append(x_fitting, self.extrapolated_x)
+        y_fitline = poly.polyval(x_arr, coeffs)
+        self.maingraph.clear()
+        self.maingraph.plot(self.x_data, self.y_data, pen=self.pens[2])
+        self.maingraph.plot(x_arr, y_fitline, pen=None, symbol='o')
+        for i in range(0, len(self.new_y)):
+            self.error_per_chunk += ((self.new_y[i] - y_fitline[i])**2)
+        fx = str(round(coeffs[0], 4))
+        for i in range(1, len(coeffs)):
+            if coeffs[i] > 0:
+                const = " + " + str(round(coeffs[i], 4)) + " x^{{{}}}".format(i)
+            else:
+                const = " - " + str(abs(round(coeffs[i], 4))) + " x^{{{}}}".format(i)
+            fx += const
+        error = "\n, Percentage Error = " + str(round(self.error_per_chunk, 3)) + " %"
+        fx += error
+        self.equ_arr.append(fx)
+        print(self.equ_arr)
+        self.ch_equation()
+    
+    # make with another thrid:
+    # when press start_button AND self.complete > 0 and < 100:
     def start_errormap(self):
         self.complete = 0
         self.error.clear()
@@ -213,23 +235,17 @@ class MyWidget(QtWidgets.QMainWindow):
     def create_errormap(self, x_axis, y_axis):
         self.mat_xaxis = x_axis
         self.mat_yaxis = y_axis
-        print(self.mat_xaxis)
-        print(self.mat_yaxis)
-
         self.error_array = []
         self.calculate_errormap()  # fills the error_array
-        # print("error array", self.error_array)
-        self.error_array = np.array(self.error_array) # convert to np array to do reshape
+        self.error_array = np.array(self.error_array)       # convert to np array to do reshape
         self.error_mat = self.error_array.reshape(len(self.mat_xaxis), len(self.mat_yaxis))
-        # print("error matrix", self.error_mat)
-        # just for test
-        self.error_matrix = np.flip(self.error_mat, 0)
+        self.error_matrix = np.flip(self.error_mat, 0) # need flipping to make start index of the error array at the origin of imshow graph
         self.error.clear()
         ax = self.error.add_subplot(111)
         map = ax.imshow(self.error_matrix, cmap='inferno', extent=[min(self.mat_xaxis), max(self.mat_xaxis), min(self.mat_yaxis), max(self.mat_yaxis)],  aspect='auto')    # self.mat_xaxis, self.mat_yaxis,
         divider3 = make_axes_locatable(ax)
         cax3 = divider3.append_axes("right", size="10%")
-        cbar3 = plt.colorbar(map, cax=cax3)
+        plt.colorbar(map, cax=cax3)
         self.canvas_error_map.draw()
         self.progressBar.setValue(100)
         self.start_button.setText("start")
@@ -237,14 +253,8 @@ class MyWidget(QtWidgets.QMainWindow):
     def calculate_errormap(self):
         for x_val in self.mat_xaxis:
             for y_val in self.mat_yaxis:
-                if isinstance(self.overlap_vals, float):      # when overlap is const
-                    error_val = self.fill_error_mat_zero_overlap(x_val, y_val)
-                else:
-                    print("x value = ", x_val)
-                    print("y value = ", y_val)
-
-                    error_val = self.fill_error_mat_nonzero_overlap(x_val, y_val)
-                    print()    # overlap is array
+                # if isinstance(self.overlap_vals, int):      # when overlap is const
+                error_val = self.fill_error_mat(x_val, y_val)
                 self.error_array.append(error_val)
                 self.complete += self.step
                 self.progressBar.setValue(self.complete)
@@ -253,78 +263,38 @@ class MyWidget(QtWidgets.QMainWindow):
     y_chunks_arr = []
     
     
-    def fill_error_mat_zero_overlap(self, x_val, y_val):
-        if self.x_param == "number of chunks":
-            num_chunk = x_val
-            order = y_val
-        if self.y_param == "number of chunks":
-            num_chunk = y_val
-            order = x_val
-            
-
-        total_error = []
-        chunk_width = ((max(self.x_data) - min(self.x_data)) / num_chunk) + (self.overlap_vals / 2)
-        self.chunk_index.clear()
-        self.chunk_index.append(min(self.x_data))
-        for i in range(0, (2 * num_chunk)):
-            if (i % 2) == 0:
-                ind = self.chunk_index[i] + chunk_width
-            else:
-                ind = self.chunk_index[i] - self.overlap_vals
-            self.chunk_index.append(ind)
-        self.chunk_index.pop()
-        self.new_chunk = 0
-        for j in range(0, len(self.chunk_index)-1):
-            self.x_each_chunk.clear()
-            self.y_each_chunk.clear()
-            if (j % 2) == 0:
-                for k in range(self.new_chunk, len(self.x_data)):
-                    if self.x_data[k] >= self.chunk_index[j] and self.x_data[k] <= self.chunk_index[j+1]:
-                        self.x_each_chunk.append(self.x_data[k])
-                        self.y_each_chunk.append(self.y_data[k])
-                        if (j+2) != len(self.chunk_index):
-                            if self.x_data[k] <= self.chunk_index[j+2]:
-                                self.new_chunk = k+1
-                    else:
-                        break
-                self.x_chunks_arr.append(self.x_each_chunk)
-                self.y_chunks_arr.append(self.y_each_chunk)
-
-        for i in range(0, len(self.x_chunks_arr)):
-            coeffs = poly.polyfit(self.x_chunks_arr[i], self.y_chunks_arr[i], order)
-            x_fitline = np.linspace(self.x_chunks_arr[0], self.x_chunks_arr[-1], num=len(self.x_chunks_arr) * 1)
-            y_fitline = poly.polyval(x_fitline, coeffs)
-
-        k = 0
-        for i in range(len(self.y_chunks_arr)):
-            for j in range(len(self.y_chunks_arr[i])):
-                total_error.append(((self.y_chunks_arr[i][j] * y_fitline[k]) / self.y_chunks_arr[i][j]) * 100)
-                ++k
-        return np.median(total_error)
-    
-    def fill_error_mat_nonzero_overlap(self, x_val, y_val):
-        if self.x_param == "overlapping":  # then y is chunk or order
-            overlap_val = x_val
-            if isinstance(self.order_vals, int):  # then order is const
-                order = self.order_vals
-                num_chunk = y_val
-            else:  # then chunks is const
-                num_chunk = self.chunk_vals
-                order = y_val
-        else:  # then x is chunk or order
-            overlap_val = y_val
-            if isinstance(self.order_vals, int):  # then order is const
-                order = self.order_vals
+    def fill_error_mat(self, x_val, y_val):
+        if isinstance(self.overlap_vals, float):      # when overlap is const
+            overlap_val = self.overlap_vals
+            if self.x_param == "number of chunks":
                 num_chunk = x_val
-            else:  # then chunks is const
-                num_chunk = self.chunk_vals
+                order = y_val
+            if self.y_param == "number of chunks":
+                num_chunk = y_val
                 order = x_val
+        else:
+            if self.x_param == "overlapping":  # then y is chunk or order
+                overlap_val = x_val
+                if isinstance(self.order_vals, int):  # then order is const
+                    order = self.order_vals
+                    num_chunk = y_val
+                else:  # then chunks is const
+                    num_chunk = self.chunk_vals
+                    order = y_val
+            else:  # then x is chunk or order
+                overlap_val = y_val
+                if isinstance(self.order_vals, int):  # then order is const
+                    order = self.order_vals
+                    num_chunk = x_val
+                else:  # then chunks is const
+                    num_chunk = self.chunk_vals
+                    order = x_val
+                
 
         total_error = []
         chunk_width = ((max(self.x_data) - min(self.x_data)) / num_chunk) + (overlap_val / 2)
         self.chunk_index.clear()
         self.chunk_index.append(min(self.x_data))
-        print(num_chunk)
         for i in range(0, (2 * num_chunk)):
             if (i % 2) == 0:
                 ind = self.chunk_index[i] + chunk_width
@@ -350,7 +320,6 @@ class MyWidget(QtWidgets.QMainWindow):
                 self.y_chunks_arr.append(self.y_each_chunk)
 
         for i in range(0, len(self.x_chunks_arr)):
-            # print(order)
             coeffs = poly.polyfit(self.x_chunks_arr[i], self.y_chunks_arr[i], order)
             x_fitline = np.linspace(self.x_chunks_arr[0], self.x_chunks_arr[-1], num=len(self.x_chunks_arr) * 1)
             y_fitline = poly.polyval(x_fitline, coeffs)
@@ -361,11 +330,8 @@ class MyWidget(QtWidgets.QMainWindow):
                 total_error.append(((self.y_chunks_arr[i][j] * y_fitline[k]) / self.y_chunks_arr[i][j]) * 100)
                 ++k
         return np.median(total_error)
-        
-       
-      
-       
-        
+
+    
 
 
 def main():
