@@ -3,7 +3,9 @@
 # Put white board when chosing same variable on axis
 # make cancel button
 
+from threading import Thread
 import sys
+import threading
 import matplotlib.pyplot as plt
 import numpy as np
 import numpy.polynomial.polynomial as poly
@@ -52,7 +54,7 @@ class MyWidget(QtWidgets.QMainWindow):
         self.Order_text.textChanged.connect(lambda: self.Order())
         self.NumChunks_text.textChanged.connect(lambda: self.fitting())
         self.extrapolation_text.textChanged.connect(lambda: self.extrapolation())
-        self.start_button.clicked.connect(lambda: self.start_errormap())
+        self.start_button.clicked.connect(lambda: self.start_or_end_errormap())
         self.pens = [pg.mkPen('r'), pg.mkPen('b'), pg.mkPen('g')]
         
 
@@ -88,6 +90,7 @@ class MyWidget(QtWidgets.QMainWindow):
     chunks_points = []
     y_each_chunk = []
     equ_arr = []
+    exit_error_map = False
 
     def fitting(self):
         order, num_chunks = self.get_values()
@@ -181,9 +184,26 @@ class MyWidget(QtWidgets.QMainWindow):
         print(self.equ_arr)
         self.ch_equation()
     
-    # make with another thrid:
-    # when press start_button AND self.complete > 0 and < 100:
+    ## when press start button -> startOrEndErrorMap()
+    ## if button == start: call startErrorMap in another thrid.
+    ## else -> call cancelErrorMap:make button = "start", end thrid (make exitThrid = true)
+    
+    ## make global variable boolean exitThread that is false
+    ## in loop of progressBar
+    ## t = threading.Thread(target= startErrorMap)
+    
+    def start_or_end_errormap(self):
+        if self.start_button.text() == "start":
+            map_thread = threading.Thread(target= self.start_errormap)
+            map_thread.start()
+        else:          # end thread
+            self.start_button.setText("start")
+            self.exit_error_map = True 
+
+
     def start_errormap(self):
+        # check here in a method, if same attributes on both axis: show error message/ blank
+        # errorMap, end thrid
         self.complete = 0
         self.error.clear()
         self.start_button.setText("cancel")
@@ -236,7 +256,9 @@ class MyWidget(QtWidgets.QMainWindow):
         self.mat_xaxis = x_axis
         self.mat_yaxis = y_axis
         self.error_array = []
-        self.calculate_errormap()  # fills the error_array
+        progress_state = self.calculate_errormap()  # fills the error_array
+        if progress_state == False:      # exit error map if cancel button is pushed
+            return
         self.error_array = np.array(self.error_array)       # convert to np array to do reshape
         self.error_mat = self.error_array.reshape(len(self.mat_xaxis), len(self.mat_yaxis))
         self.error_matrix = np.flip(self.error_mat, 0) # need flipping to make start index of the error array at the origin of imshow graph
@@ -253,11 +275,13 @@ class MyWidget(QtWidgets.QMainWindow):
     def calculate_errormap(self):
         for x_val in self.mat_xaxis:
             for y_val in self.mat_yaxis:
-                # if isinstance(self.overlap_vals, int):      # when overlap is const
+                if self.exit_error_map:    # end loading of error map
+                    return False
                 error_val = self.fill_error_mat(x_val, y_val)
                 self.error_array.append(error_val)
                 self.complete += self.step
                 self.progressBar.setValue(self.complete)
+        return True        
 
     x_chunks_arr = []
     y_chunks_arr = []
