@@ -184,32 +184,29 @@ class MyWidget(QtWidgets.QMainWindow):
         print(self.equ_arr)
         self.ch_equation()
     
-    ## when press start button -> startOrEndErrorMap()
-    ## if button == start: call startErrorMap in another thrid.
-    ## else -> call cancelErrorMap:make button = "start", end thrid (make exitThrid = true)
-    
-    ## make global variable boolean exitThread that is false
-    ## in loop of progressBar
-    ## t = threading.Thread(target= startErrorMap)
     
     def start_or_end_errormap(self):
         if self.start_button.text() == "start":
+            self.exit_error_map = False
+            print("before starting thread\n")
             map_thread = threading.Thread(target= self.start_errormap)
             map_thread.start()
         else:          # end thread
             self.start_button.setText("start")
+            print("before ending thread\n")
             self.exit_error_map = True 
 
 
     def start_errormap(self):
-        # check here in a method, if same attributes on both axis: show error message/ blank
-        # errorMap, end thrid
-        self.complete = 0
-        self.error.clear()
-        self.start_button.setText("cancel")
         self.x_param = self.x_error_map.currentText()
         self.y_param = self.y_error_map.currentText()
-
+        self.error.clear()
+        if self.x_param == self.y_param:     # blank errormap if same attributes on both axis
+            return
+        print("in start errormap\n")
+        self.complete = 0
+        self.start_button.setText("cancel")
+        
         x_range = int(self.x_max.text())
         y_range = int(self.y_max.text())
         self.step = (100 / (x_range*y_range))
