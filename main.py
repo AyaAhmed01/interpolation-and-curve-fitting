@@ -64,7 +64,6 @@ class MyWidget(QtWidgets.QMainWindow):
            self, 'Open only txt or CSV or xls', os.getenv('HOME'))
         data = pd.read_csv(self.file[0][0])
         self.y_data = data.values[:, 1]
-        # self.time = np.arange(0, 9.99, step=0.01, dtype=float)
         self.x_data = data.values[:, 0]
         self.maingraph.plot(self.x_data, self.y_data, pen=self.pens[2])
         self.Order_text.setText("0")
@@ -75,7 +74,6 @@ class MyWidget(QtWidgets.QMainWindow):
 
     def Order(self):
         if self.extrapolation_text.text() != "0":
-            # self.NumChunks_text.setText("1")
             self.extrapolation()
         else:
             self.fitting()
@@ -202,6 +200,7 @@ class MyWidget(QtWidgets.QMainWindow):
         self.y_param = self.y_error_map.currentText()
         self.error.clear()
         if self.x_param == self.y_param:     # blank errormap if same attributes on both axis
+            # self.canvas_error_map.draw()
             return
         print("in start errormap\n")
         self.complete = 0
@@ -214,7 +213,7 @@ class MyWidget(QtWidgets.QMainWindow):
         if self.x_param == 'order':                  # x_param, y_param are taken from user
             if self.y_param == 'number of chunks':    # chunk on y 
                 self.overlap_vals = int(self.const_text.text()) / 100.0
-                self.chunk_vals = np.arange(2, y_range+1)
+                self.chunk_vals = np.arange(1, y_range+1)
                 self.order_vals = np.arange(0, x_range+1)
                 self.create_errormap(self.order_vals, self.chunk_vals)
             else:    # y is overlapping 
@@ -227,13 +226,13 @@ class MyWidget(QtWidgets.QMainWindow):
         if self.x_param == 'number of chunks':
             if self.y_param == 'order':    # order on y 
                 self.overlap_vals = int(self.const_text.text()) / 100.0
-                self.chunk_vals = np.arange(2, x_range+1)
+                self.chunk_vals = np.arange(1, x_range+1)
                 self.order_vals = np.arange(0, y_range+1)
                 self.create_errormap(self.chunk_vals, self.order_vals)
             else:    # y is  overlapping
                 self.order_vals = int(self.const_text.text())
                 self.overlap_vals = np.arange(0, y_range+1, 2) / 100.0
-                self.chunk_vals = np.arange(2, x_range+1)
+                self.chunk_vals = np.arange(1, x_range+1)
                 self.create_errormap(self.chunk_vals, self.overlap_vals)
         
         if self.x_param == 'overlapping':
@@ -244,7 +243,7 @@ class MyWidget(QtWidgets.QMainWindow):
                 self.create_errormap(self.overlap_vals, self.order_vals)
             else:    # y is  chunks
                 self.order_vals = int(self.const_text.text()) 
-                self.chunk_vals = np.arange(2, y_range+1)
+                self.chunk_vals = np.arange(1, y_range+1)
                 self.overlap_vals = np.arange(0, x_range+1, 2) / 100.0
                 self.create_errormap(self.overlap_vals, self.chunk_vals)
     
