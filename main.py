@@ -1,15 +1,10 @@
-# Modify:
-# start button name
-# Put white board when chosing same variable on axis
-# make cancel button
-
 from threading import Thread
 import sys
 import threading
 import matplotlib.pyplot as plt
 import numpy as np
 import numpy.polynomial.polynomial as poly
-from PyQt5.QtWidgets import QLineEdit, QLabel, QPushButton, QPlainTextEdit, QSlider
+from PyQt5.QtWidgets import QLineEdit, QLabel, QPushButton, QPlainTextEdit, QSlider,QMessageBox
 from PyQt5 import QtCore, QtGui, uic, QtWidgets
 import pyqtgraph as pg
 import os
@@ -18,29 +13,11 @@ from matplotlib.figure import Figure
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from matplotlib.ticker import MultipleLocator
-
-
-
-import sys
-import matplotlib.pyplot as plt
-import numpy as np
-import numpy.polynomial.polynomial as poly
-from PyQt5.QtWidgets import QLineEdit, QLabel, QPushButton, QPlainTextEdit, QSlider
-from PyQt5 import QtCore, QtGui, uic, QtWidgets
-import pyqtgraph as pg
-import os
-import pandas as pd
-from matplotlib.figure import Figure
-from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
-from mpl_toolkits.axes_grid1 import make_axes_locatable
-from matplotlib.ticker import MultipleLocator
-
-
 
 class MyWidget(QtWidgets.QMainWindow):
     def __init__(self):
         super().__init__()
-        uic.loadUi('gui.ui', self)
+        uic.loadUi('components.ui', self)
         bg = self.palette().window().color()
         cl = (bg.redF(), bg.greenF(), bg.blueF())
         self.fig = Figure(edgecolor=cl, facecolor=cl)
@@ -56,9 +33,7 @@ class MyWidget(QtWidgets.QMainWindow):
         self.extrapolation_text.textChanged.connect(lambda: self.extrapolation())
         self.start_button.clicked.connect(lambda: self.start_or_end_errormap())
         self.pens = [pg.mkPen('r'), pg.mkPen('b'), pg.mkPen('g')]
-        
 
-        
     def Open(self):
         self.file = QtWidgets.QFileDialog.getOpenFileNames(
            self, 'Open only txt or CSV or xls', os.getenv('HOME'))
@@ -73,7 +48,8 @@ class MyWidget(QtWidgets.QMainWindow):
         self.ch_equation()
 
     def Order(self):
-        if self.extrapolation_text.text() != "0":
+        if self.extrapolation_text.text() != ("100" or"0"):
+            self.NumChunks_text.setText("1")
             self.extrapolation()
         else:
             self.fitting()
@@ -180,28 +156,34 @@ class MyWidget(QtWidgets.QMainWindow):
         fx += error
         self.equ_arr.append(fx)
         print(self.equ_arr)
-        self.ch_equation()
-    
+        self.ch_equation()    
     
     def start_or_end_errormap(self):
-        if self.start_button.text() == "start":
+        if self.start_button.text() == "Start":
             self.exit_error_map = False
+            x_param = self.x_error_map.currentText()
+            y_param = self.y_error_map.currentText()
+            if x_param == y_param:  # blank errormap if same attributes on both axis
+                msg = QMessageBox()
+                msg.setWindowTitle("Error")
+                msg.setText("X-axis and Y-axis have the same variable, please change any one of them.")
+                msg.exec_()
+                return
             print("before starting thread\n")
             map_thread = threading.Thread(target= self.start_errormap)
             map_thread.start()
         else:          # end thread
-            self.start_button.setText("start")
+            self.start_button.setText("Start")
+            self.error.clear()
+            self.canvas_error_map.draw()
             print("before ending thread\n")
             self.exit_error_map = True 
 
-
     def start_errormap(self):
+        self.error.clear()
+        self.canvas_error_map.draw()
         self.x_param = self.x_error_map.currentText()
         self.y_param = self.y_error_map.currentText()
-        self.error.clear()
-        if self.x_param == self.y_param:     # blank errormap if same attributes on both axis
-            # self.canvas_error_map.draw()
-            return
         print("in start errormap\n")
         self.complete = 0
         self.start_button.setText("cancel")
@@ -209,7 +191,7 @@ class MyWidget(QtWidgets.QMainWindow):
         x_range = int(self.x_max.text())
         y_range = int(self.y_max.text())
         self.step = (100 / (x_range*y_range))
-        
+        print("after step\n")
         if self.x_param == 'order':                  # x_param, y_param are taken from user
             if self.y_param == 'number of chunks':    # chunk on y 
                 self.overlap_vals = int(self.const_text.text()) / 100.0
@@ -254,6 +236,7 @@ class MyWidget(QtWidgets.QMainWindow):
         self.error_array = []
         progress_state = self.calculate_errormap()  # fills the error_array
         if progress_state == False:      # exit error map if cancel button is pushed
+            self.progressBar.setValue(0)
             return
         self.error_array = np.array(self.error_array)       # convert to np array to do reshape
         self.error_mat = self.error_array.reshape(len(self.mat_xaxis), len(self.mat_yaxis))
@@ -266,13 +249,14 @@ class MyWidget(QtWidgets.QMainWindow):
         plt.colorbar(map, cax=cax3)
         self.canvas_error_map.draw()
         self.progressBar.setValue(100)
-        self.start_button.setText("start")
+        self.start_button.setText("Start")
 
     def calculate_errormap(self):
         for x_val in self.mat_xaxis:
             for y_val in self.mat_yaxis:
                 if self.exit_error_map:    # end loading of error map
                     return False
+                print("in calculate errormap\n")
                 error_val = self.fill_error_mat(x_val, y_val)
                 self.error_array.append(error_val)
                 self.complete += self.step
@@ -350,10 +334,7 @@ class MyWidget(QtWidgets.QMainWindow):
                 total_error.append(((self.y_chunks_arr[i][j] * y_fitline[k]) / self.y_chunks_arr[i][j]) * 100)
                 ++k
         return np.median(total_error)
-
     
-
-
 def main():
     app = QtWidgets.QApplication(sys.argv)
     application = MyWidget()
